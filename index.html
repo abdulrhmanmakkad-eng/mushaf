@@ -1,0 +1,1453 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d0a05">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>المصحف الشريف</title>
+<style>
+/* ═══════════════════════════════════════
+   VARIABLES & RESET
+═══════════════════════════════════════ */
+:root {
+  --bg:       #0d0a05;
+  --surface:  #161008;
+  --border:   #2a1f0a;
+  --gold:     #c9a84c;
+  --gold-dim: #8a6f2e;
+  --gold-glow:#f5d78e;
+  --text:     #e8dcc8;
+  --text-dim: #9a8a6a;
+  --page-w:   min(580px, 100vw);
+  --hdr:      52px;
+  --ftr:      60px;
+  --radius:   12px;
+  --trans:    0.22s cubic-bezier(.4,0,.2,1);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { height: 100%; overflow: hidden; }
+body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ═══════════════════════════════════════
+   HEADER
+═══════════════════════════════════════ */
+#header {
+  height: var(--hdr);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  background: linear-gradient(180deg, #1a1205 0%, #0d0a05 100%);
+  border-bottom: 1px solid var(--border);
+  position: relative;
+  z-index: 100;
+}
+.hdr-btn {
+  width: 36px; height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(201,168,76,.08);
+  color: var(--gold);
+  font-size: 18px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: var(--trans);
+  flex-shrink: 0;
+}
+.hdr-btn:hover { background: rgba(201,168,76,.18); border-color: var(--gold-dim); }
+.hdr-btn:active { transform: scale(.93); }
+
+#navChips {
+  flex: 1;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
+}
+.nav-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(201,168,76,.06);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: var(--trans);
+  min-width: 0;
+  flex: 1;
+}
+.nav-chip:hover { background: rgba(201,168,76,.14); border-color: var(--gold-dim); }
+.nav-chip:active { transform: scale(.96); }
+.chip-label { font-size: 9px; color: var(--text-dim); letter-spacing: .5px; white-space: nowrap; }
+.chip-value { font-size: 13px; color: var(--gold-glow); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+
+/* ═══════════════════════════════════════
+   MAIN SCROLL AREA
+═══════════════════════════════════════ */
+#reader {
+  flex: 1;
+  overflow-y: scroll;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  background: #080604;
+  position: relative;
+}
+#pagesContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px 0 80px;
+  gap: 24px;
+}
+
+/* ═══════════════════════════════════════
+   PAGE CARD
+═══════════════════════════════════════ */
+.page-card {
+  width: var(--page-w);
+  position: relative;
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow:
+    0 0 0 1px rgba(201,168,76,.15),
+    0 4px 24px rgba(0,0,0,.6),
+    0 0 60px rgba(201,168,76,.03);
+  transition: box-shadow var(--trans);
+  background: #f5f0e8;
+}
+.page-card.active-page {
+  box-shadow:
+    0 0 0 2px var(--gold-dim),
+    0 8px 40px rgba(0,0,0,.8),
+    0 0 80px rgba(201,168,76,.12);
+}
+
+/* Page number badge */
+.page-badge {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(13,10,5,.85);
+  color: var(--gold-dim);
+  font-size: 11px;
+  padding: 2px 10px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  z-index: 5;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+/* Read overlay */
+.read-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(201,168,76,.07);
+  border-radius: var(--radius);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--trans);
+  z-index: 4;
+}
+.page-card.read .read-overlay { opacity: 1; }
+.read-checkmark {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: 28px; height: 28px;
+  background: var(--gold);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px;
+  color: #0d0a05;
+  z-index: 6;
+  opacity: 0;
+  transform: scale(.6);
+  transition: all var(--trans);
+}
+.page-card.read .read-checkmark { opacity: 1; transform: scale(1); }
+
+/* Mark-read button */
+.btn-mark {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  background: rgba(201,168,76,.9);
+  color: #0d0a05;
+  border: none;
+  border-radius: 20px;
+  padding: 5px 12px;
+  font-size: 11px;
+  font-family: 'Segoe UI', sans-serif;
+  font-weight: 700;
+  cursor: pointer;
+  z-index: 6;
+  transition: var(--trans);
+  white-space: nowrap;
+}
+.btn-mark:hover { background: var(--gold-glow); }
+.btn-mark:active { transform: scale(.95); }
+.page-card.read .btn-mark { background: rgba(100,80,20,.7); color: var(--gold-dim); }
+
+/* Mushaf page image */
+.page-img {
+  width: 100%;
+  display: block;
+  aspect-ratio: 595/840;
+  object-fit: cover;
+  background: #f0e8d4;
+}
+.page-img.night { filter: invert(1) hue-rotate(180deg) brightness(0.9); }
+
+/* Placeholder while loading */
+.page-placeholder {
+  width: 100%;
+  aspect-ratio: 595/840;
+  background: linear-gradient(135deg, #1a1208, #0f0c06);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--gold-dim);
+  font-size: 13px;
+}
+.page-spinner {
+  width: 32px; height: 32px;
+  border: 2px solid var(--border);
+  border-top-color: var(--gold-dim);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ═══════════════════════════════════════
+   FOOTER NAV
+═══════════════════════════════════════ */
+#footer {
+  height: var(--ftr);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  background: linear-gradient(0deg, #1a1205 0%, #0d0a05 100%);
+  border-top: 1px solid var(--border);
+  gap: 8px;
+  position: relative;
+  z-index: 100;
+}
+.ftr-btn {
+  height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: rgba(201,168,76,.06);
+  color: var(--gold);
+  font-size: 20px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: var(--trans);
+  flex-shrink: 0;
+}
+.ftr-btn:hover { background: rgba(201,168,76,.18); }
+.ftr-btn:active { transform: scale(.92); }
+.ftr-btn:disabled { opacity: .3; cursor: not-allowed; }
+
+#pageJumpWrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: center;
+}
+#pageJumpInput {
+  width: 62px;
+  height: 36px;
+  background: rgba(201,168,76,.06);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--gold-glow);
+  font-size: 15px;
+  text-align: center;
+  font-family: 'Segoe UI', sans-serif;
+  outline: none;
+  transition: var(--trans);
+}
+#pageJumpInput:focus { border-color: var(--gold-dim); background: rgba(201,168,76,.12); }
+#pageJumpBtn {
+  height: 36px;
+  padding: 0 12px;
+  background: linear-gradient(135deg, #8a6f2e, #c9a84c);
+  border: none;
+  border-radius: 8px;
+  color: #0d0a05;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--trans);
+  white-space: nowrap;
+  font-family: 'Segoe UI', sans-serif;
+}
+#pageJumpBtn:hover { filter: brightness(1.1); }
+#pageJumpBtn:active { transform: scale(.95); }
+
+/* ═══════════════════════════════════════
+   DRAWER (NAV PANEL)
+═══════════════════════════════════════ */
+#drawerOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.7);
+  z-index: 200;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--trans);
+  backdrop-filter: blur(4px);
+}
+#drawerOverlay.open { opacity: 1; pointer-events: auto; }
+
+#drawer {
+  position: fixed;
+  top: 0; right: 0; bottom: 0;
+  width: min(340px, 90vw);
+  background: linear-gradient(135deg, #1a1208 0%, #0f0c06 100%);
+  border-left: 1px solid var(--border);
+  z-index: 201;
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 0.3s cubic-bezier(.4,0,.2,1);
+  box-shadow: -8px 0 40px rgba(0,0,0,.8);
+}
+#drawer.open { transform: translateX(0); }
+
+.drawer-header {
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.drawer-title {
+  font-size: 16px;
+  color: var(--gold-glow);
+  font-weight: 700;
+}
+.drawer-close {
+  width: 32px; height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(201,168,76,.08);
+  color: var(--gold-dim);
+  font-size: 18px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: var(--trans);
+}
+.drawer-close:hover { color: var(--gold); }
+
+/* Tabs */
+.drawer-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+}
+.drawer-tab {
+  flex: 1;
+  padding: 10px 4px;
+  font-size: 12px;
+  color: var(--text-dim);
+  cursor: pointer;
+  text-align: center;
+  border-bottom: 2px solid transparent;
+  transition: var(--trans);
+  background: none;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+}
+.drawer-tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+
+.drawer-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+.drawer-content::-webkit-scrollbar { width: 3px; }
+.drawer-content::-webkit-scrollbar-thumb { background: var(--border); }
+
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* Surah list items */
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: var(--trans);
+  border: 1px solid transparent;
+}
+.nav-item:hover { background: rgba(201,168,76,.08); border-color: var(--border); }
+.nav-item:active { transform: scale(.98); }
+.nav-item-num {
+  width: 28px; height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px;
+  color: var(--gold-dim);
+  flex-shrink: 0;
+}
+.nav-item-name { font-size: 14px; color: var(--text); flex: 1; }
+.nav-item-page { font-size: 11px; color: var(--text-dim); flex-shrink: 0; }
+
+/* Juz grid */
+.juz-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  padding: 4px;
+}
+.juz-btn {
+  padding: 12px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(201,168,76,.05);
+  cursor: pointer;
+  text-align: center;
+  transition: var(--trans);
+}
+.juz-btn:hover { background: rgba(201,168,76,.14); border-color: var(--gold-dim); }
+.juz-btn:active { transform: scale(.95); }
+.juz-num { font-size: 16px; color: var(--gold); font-weight: 700; }
+.juz-info { font-size: 10px; color: var(--text-dim); margin-top: 2px; }
+
+/* ═══════════════════════════════════════
+   KHATMA SYSTEM
+═══════════════════════════════════════ */
+#khatmaPanel {
+  position: fixed;
+  bottom: var(--ftr);
+  left: 0; right: 0;
+  background: linear-gradient(0deg, #1a1208, #161008);
+  border-top: 1px solid var(--border);
+  z-index: 99;
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(.4,0,.2,1);
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 16px;
+}
+#khatmaPanel.open { transform: translateY(0); }
+
+.khatma-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.khatma-title { font-size: 15px; color: var(--gold-glow); font-weight: 700; }
+.khatma-close-btn {
+  width: 28px; height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: rgba(201,168,76,.08);
+  color: var(--gold-dim);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+  transition: var(--trans);
+}
+
+/* Progress bar */
+.progress-track {
+  height: 8px;
+  background: rgba(255,255,255,.06);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #8a6f2e, #c9a84c, #f5d78e);
+  border-radius: 4px;
+  transition: width 0.5s ease;
+}
+.progress-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-bottom: 12px;
+}
+
+/* Milestones */
+.milestones {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.milestone {
+  flex: 1;
+  text-align: center;
+  padding: 8px 4px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 10px;
+  color: var(--text-dim);
+  transition: var(--trans);
+}
+.milestone.achieved {
+  border-color: var(--gold-dim);
+  background: rgba(201,168,76,.1);
+  color: var(--gold);
+}
+.milestone-icon { font-size: 16px; margin-bottom: 2px; }
+
+/* Khatma select */
+.khatma-select-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.khatma-select-row select {
+  flex: 1;
+  background: rgba(201,168,76,.06);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-family: 'Segoe UI', sans-serif;
+  font-size: 13px;
+  outline: none;
+}
+.khatma-select-row select option { background: #1a1208; }
+.khatma-btn {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(201,168,76,.08);
+  color: var(--gold);
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: var(--trans);
+  font-family: 'Segoe UI', sans-serif;
+}
+.khatma-btn:hover { background: rgba(201,168,76,.18); }
+
+/* ═══════════════════════════════════════
+   DOWNLOAD PANEL
+═══════════════════════════════════════ */
+#downloadPanel {
+  position: fixed;
+  bottom: var(--ftr);
+  left: 0; right: 0;
+  background: linear-gradient(0deg, #1a1208, #161008);
+  border-top: 1px solid var(--border);
+  z-index: 99;
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(.4,0,.2,1);
+  padding: 16px;
+}
+#downloadPanel.open { transform: translateY(0); }
+
+.dl-title { font-size: 15px; color: var(--gold-glow); font-weight: 700; margin-bottom: 10px; }
+.dl-info { font-size: 12px; color: var(--text-dim); margin-bottom: 12px; line-height: 1.6; }
+.dl-track {
+  height: 10px;
+  background: rgba(255,255,255,.06);
+  border-radius: 5px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+.dl-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4a9a4a, #6abf6a);
+  border-radius: 5px;
+  width: 0%;
+  transition: width 0.3s;
+}
+.dl-status { font-size: 12px; color: var(--text-dim); margin-bottom: 12px; }
+.dl-btn-row { display: flex; gap: 8px; }
+.dl-start-btn {
+  flex: 1;
+  padding: 10px;
+  background: linear-gradient(135deg, #4a7a4a, #6aaf6a);
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--trans);
+  font-family: 'Segoe UI', sans-serif;
+}
+.dl-start-btn:hover { filter: brightness(1.1); }
+.dl-start-btn:disabled { opacity: .5; cursor: not-allowed; }
+.dl-cancel-btn {
+  padding: 10px 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(255,255,255,.04);
+  color: var(--text-dim);
+  font-size: 13px;
+  cursor: pointer;
+  transition: var(--trans);
+  font-family: 'Segoe UI', sans-serif;
+}
+.dl-cancel-btn:hover { color: var(--text); }
+
+/* ═══════════════════════════════════════
+   NIGHT MODE INDICATOR
+═══════════════════════════════════════ */
+body.night #reader { background: #030202; }
+
+/* ═══════════════════════════════════════
+   CELEBRATION
+═══════════════════════════════════════ */
+#celebrationOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.85);
+  z-index: 999;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 24px;
+}
+#celebrationOverlay.show { display: flex; }
+.celeb-icon { font-size: 64px; margin-bottom: 12px; animation: pulse 1.5s infinite; }
+.celeb-text { font-size: 22px; color: var(--gold-glow); font-weight: 700; margin-bottom: 8px; }
+.celeb-sub { font-size: 14px; color: var(--text-dim); margin-bottom: 20px; line-height: 1.6; }
+.celeb-close {
+  padding: 12px 32px;
+  background: linear-gradient(135deg, #8a6f2e, #c9a84c);
+  border: none; border-radius: 24px;
+  color: #0d0a05; font-size: 14px; font-weight: 700;
+  cursor: pointer; transition: var(--trans);
+  font-family: 'Segoe UI', sans-serif;
+}
+@keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.08)} }
+.falling-star {
+  position: fixed;
+  top: -50px;
+  pointer-events: none;
+  animation: fallStar linear forwards;
+  z-index: 1000;
+}
+@keyframes fallStar {
+  to { transform: translateY(110vh) rotate(360deg); opacity: 0; }
+}
+
+/* ═══════════════════════════════════════
+   SCROLLBAR
+═══════════════════════════════════════ */
+#reader::-webkit-scrollbar { width: 3px; }
+#reader::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+#reader::-webkit-scrollbar-track { background: transparent; }
+
+/* ═══════════════════════════════════════
+   TOAST
+═══════════════════════════════════════ */
+#toast {
+  position: fixed;
+  bottom: calc(var(--ftr) + 16px);
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: rgba(26,18,8,.95);
+  border: 1px solid var(--gold-dim);
+  color: var(--gold-glow);
+  padding: 8px 18px;
+  border-radius: 20px;
+  font-size: 13px;
+  z-index: 500;
+  opacity: 0;
+  transition: all 0.3s;
+  white-space: nowrap;
+  pointer-events: none;
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* Offline badge */
+#offlineBadge {
+  position: fixed;
+  top: calc(var(--hdr) + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(26,18,8,.95);
+  border: 1px solid #4a7a4a;
+  color: #6abf6a;
+  padding: 4px 14px;
+  border-radius: 20px;
+  font-size: 11px;
+  z-index: 150;
+  display: none;
+  pointer-events: none;
+}
+body.offline #offlineBadge { display: block; }
+</style>
+</head>
+<body>
+
+<!-- ═══ HEADER ═══ -->
+<header id="header">
+  <button class="hdr-btn" onclick="openDrawer()" title="التنقل">☰</button>
+  <div id="navChips">
+    <div class="nav-chip" onclick="openDrawer('surah')" title="السورة">
+      <span class="chip-label">السورة</span>
+      <span class="chip-value" id="chipSurah">—</span>
+    </div>
+    <div class="nav-chip" onclick="openDrawer('juz')" title="الجزء">
+      <span class="chip-label">الجزء</span>
+      <span class="chip-value" id="chipJuz">—</span>
+    </div>
+  </div>
+  <button class="hdr-btn" onclick="toggleNight()" id="nightBtn" title="الوضع الليلي">🌙</button>
+  <button class="hdr-btn" onclick="toggleKhatma()" title="الختمة">📖</button>
+  <button class="hdr-btn" onclick="toggleDownload()" title="تحميل للاستخدام بدون إنترنت">⬇️</button>
+</header>
+
+<!-- ═══ READER ═══ -->
+<main id="reader">
+  <div id="pagesContainer"></div>
+</main>
+
+<!-- ═══ FOOTER ═══ -->
+<footer id="footer">
+  <button class="ftr-btn" id="btnPrev" onclick="prevPage()">›</button>
+  <div id="pageJumpWrap">
+    <input type="number" id="pageJumpInput" min="1" max="604" placeholder="رقم">
+    <button id="pageJumpBtn" onclick="jumpToPage()">انتقل</button>
+  </div>
+  <button class="ftr-btn" id="btnNext" onclick="nextPage()">‹</button>
+</footer>
+
+<!-- ═══ DRAWER ═══ -->
+<div id="drawerOverlay" onclick="closeDrawer()"></div>
+<nav id="drawer">
+  <div class="drawer-header">
+    <span class="drawer-title">☰ التنقل</span>
+    <button class="drawer-close" onclick="closeDrawer()">✕</button>
+  </div>
+  <div class="drawer-tabs">
+    <button class="drawer-tab active" onclick="switchTab('surah')">السور</button>
+    <button class="drawer-tab" onclick="switchTab('juz')">الأجزاء</button>
+    <button class="drawer-tab" onclick="switchTab('page')">صفحة</button>
+  </div>
+  <div class="drawer-content">
+    <div class="tab-panel active" id="tabSurah"></div>
+    <div class="tab-panel" id="tabJuz"></div>
+    <div class="tab-panel" id="tabPage">
+      <div style="padding:16px;">
+        <p style="color:var(--text-dim);font-size:13px;margin-bottom:12px">اكتب رقم الصفحة (١ - ٦٠٤):</p>
+        <div style="display:flex;gap:8px">
+          <input type="number" id="drawerPageInput" min="1" max="604"
+            style="flex:1;background:rgba(201,168,76,.06);border:1px solid var(--border);color:var(--gold-glow);border-radius:8px;padding:8px 12px;font-size:15px;text-align:center;outline:none;font-family:sans-serif"
+            placeholder="رقم الصفحة">
+          <button onclick="jumpFromDrawer()"
+            style="padding:8px 16px;background:linear-gradient(135deg,#8a6f2e,#c9a84c);border:none;border-radius:8px;color:#0d0a05;font-weight:700;cursor:pointer;font-family:sans-serif">
+            انتقل
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- ═══ KHATMA PANEL ═══ -->
+<div id="khatmaPanel">
+  <div class="khatma-header-row">
+    <span class="khatma-title">📖 الختمة</span>
+    <button class="khatma-close-btn" onclick="toggleKhatma()">✕</button>
+  </div>
+  <div class="khatma-select-row">
+    <select id="khatmaSelect" onchange="switchKhatma()"></select>
+    <button class="khatma-btn" onclick="addKhatma()">+ جديدة</button>
+    <button class="khatma-btn" onclick="deleteKhatma()" style="color:#c97070">حذف</button>
+  </div>
+  <div class="progress-track">
+    <div class="progress-fill" id="khatmaProgressFill" style="width:0%"></div>
+  </div>
+  <div class="progress-info">
+    <span id="khatmaProgressText">٠ / ٦٠٤ صفحة</span>
+    <span id="khatmaProgressPct">٠٪</span>
+  </div>
+  <div class="milestones" id="khatmaMilestones"></div>
+</div>
+
+<!-- ═══ DOWNLOAD PANEL ═══ -->
+<div id="downloadPanel">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+    <span class="dl-title">⬇️ التحميل للاستخدام بدون إنترنت</span>
+    <button onclick="toggleDownload()" class="khatma-close-btn">✕</button>
+  </div>
+  <p class="dl-info">تحميل ٦٠٤ صفحة (~120 ميغابايت). بعد الاكتمال يعمل التطبيق بدون إنترنت.</p>
+  <div class="dl-track"><div class="dl-fill" id="dlFill"></div></div>
+  <p class="dl-status" id="dlStatus">جاهز للتحميل</p>
+  <div class="dl-btn-row">
+    <button class="dl-start-btn" id="dlStartBtn" onclick="startDownload()">🚀 بدء التحميل</button>
+    <button class="dl-cancel-btn" onclick="toggleDownload()">إلغاء</button>
+  </div>
+</div>
+
+<!-- ═══ CELEBRATION ═══ -->
+<div id="celebrationOverlay">
+  <div class="celeb-icon">🏆</div>
+  <div class="celeb-text">بارك الله فيك!</div>
+  <div class="celeb-sub" id="celebText">أتممت ختمة القرآن الكريم كاملة<br>﴿ وَلَقَدْ يَسَّرْنَا الْقُرْآنَ لِلذِّكْرِ ﴾</div>
+  <button class="celeb-close" onclick="closeCelebration()">الحمد لله ✓</button>
+</div>
+
+<!-- ═══ MISC ═══ -->
+<div id="toast"></div>
+<div id="offlineBadge">📵 وضع بدون إنترنت</div>
+
+<script>
+// ══════════════════════════════════════════════
+//  PAGE MAP DATA (embedded)
+// ══════════════════════════════════════════════
+const PAGE_MAP={1:{surah:1,ayah:1,juz:1},2:{surah:2,ayah:1,juz:1},3:{surah:2,ayah:6,juz:1},4:{surah:2,ayah:17,juz:1},5:{surah:2,ayah:25,juz:1},6:{surah:2,ayah:30,juz:1},7:{surah:2,ayah:38,juz:1},8:{surah:2,ayah:44,juz:1},9:{surah:2,ayah:49,juz:1},10:{surah:2,ayah:55,juz:1},11:{surah:2,ayah:61,juz:1},12:{surah:2,ayah:67,juz:1},13:{surah:2,ayah:74,juz:1},14:{surah:2,ayah:80,juz:1},15:{surah:2,ayah:87,juz:1},16:{surah:2,ayah:93,juz:2},17:{surah:2,ayah:101,juz:2},18:{surah:2,ayah:106,juz:2},19:{surah:2,ayah:113,juz:2},20:{surah:2,ayah:120,juz:2},21:{surah:2,ayah:127,juz:2},22:{surah:2,ayah:135,juz:2},23:{surah:2,ayah:142,juz:2},24:{surah:2,ayah:148,juz:2},25:{surah:2,ayah:154,juz:2},26:{surah:2,ayah:160,juz:2},27:{surah:2,ayah:167,juz:2},28:{surah:2,ayah:174,juz:2},29:{surah:2,ayah:181,juz:2},30:{surah:2,ayah:187,juz:2},31:{surah:2,ayah:194,juz:2},32:{surah:2,ayah:200,juz:2},33:{surah:2,ayah:206,juz:2},34:{surah:2,ayah:212,juz:2},35:{surah:2,ayah:220,juz:2},36:{surah:2,ayah:228,juz:2},37:{surah:2,ayah:234,juz:2},38:{surah:2,ayah:240,juz:2},39:{surah:2,ayah:246,juz:2},40:{surah:2,ayah:253,juz:2},41:{surah:2,ayah:258,juz:3},42:{surah:2,ayah:265,juz:3},43:{surah:2,ayah:272,juz:3},44:{surah:2,ayah:278,juz:3},45:{surah:2,ayah:283,juz:3},46:{surah:3,ayah:1,juz:3},47:{surah:3,ayah:10,juz:3},48:{surah:3,ayah:17,juz:3},49:{surah:3,ayah:24,juz:3},50:{surah:3,ayah:31,juz:3},51:{surah:3,ayah:38,juz:3},52:{surah:3,ayah:47,juz:3},53:{surah:3,ayah:55,juz:3},54:{surah:3,ayah:63,juz:3},55:{surah:3,ayah:71,juz:3},56:{surah:3,ayah:79,juz:3},57:{surah:3,ayah:87,juz:3},58:{surah:3,ayah:94,juz:3},59:{surah:3,ayah:102,juz:3},60:{surah:3,ayah:110,juz:3},61:{surah:3,ayah:117,juz:3},62:{surah:3,ayah:125,juz:4},63:{surah:3,ayah:133,juz:4},64:{surah:3,ayah:142,juz:4},65:{surah:3,ayah:150,juz:4},66:{surah:3,ayah:159,juz:4},67:{surah:3,ayah:167,juz:4},68:{surah:3,ayah:174,juz:4},69:{surah:3,ayah:181,juz:4},70:{surah:3,ayah:188,juz:4},71:{surah:3,ayah:196,juz:4},72:{surah:4,ayah:1,juz:4},73:{surah:4,ayah:8,juz:4},74:{surah:4,ayah:15,juz:4},75:{surah:4,ayah:20,juz:4},76:{surah:4,ayah:25,juz:4},77:{surah:4,ayah:30,juz:5},78:{surah:4,ayah:36,juz:5},79:{surah:4,ayah:42,juz:5},80:{surah:4,ayah:48,juz:5},81:{surah:4,ayah:53,juz:5},82:{surah:4,ayah:59,juz:5},83:{surah:4,ayah:66,juz:5},84:{surah:4,ayah:72,juz:5},85:{surah:4,ayah:78,juz:5},86:{surah:4,ayah:84,juz:5},87:{surah:4,ayah:90,juz:5},88:{surah:4,ayah:97,juz:5},89:{surah:4,ayah:102,juz:5},90:{surah:4,ayah:107,juz:5},91:{surah:4,ayah:114,juz:5},92:{surah:4,ayah:122,juz:5},93:{surah:4,ayah:128,juz:5},94:{surah:4,ayah:135,juz:5},95:{surah:4,ayah:141,juz:5},96:{surah:4,ayah:148,juz:5},97:{surah:4,ayah:155,juz:5},98:{surah:4,ayah:163,juz:5},99:{surah:4,ayah:170,juz:5},100:{surah:4,ayah:176,juz:5},101:{surah:5,ayah:1,juz:6},102:{surah:5,ayah:5,juz:6},103:{surah:5,ayah:11,juz:6},104:{surah:5,ayah:18,juz:6},105:{surah:5,ayah:25,juz:6},106:{surah:5,ayah:32,juz:6},107:{surah:5,ayah:38,juz:6},108:{surah:5,ayah:45,juz:6},109:{surah:5,ayah:52,juz:6},110:{surah:5,ayah:59,juz:6},111:{surah:5,ayah:66,juz:6},112:{surah:5,ayah:73,juz:6},113:{surah:5,ayah:80,juz:6},114:{surah:5,ayah:87,juz:6},115:{surah:5,ayah:94,juz:6},116:{surah:5,ayah:101,juz:6},117:{surah:5,ayah:107,juz:6},118:{surah:5,ayah:114,juz:6},119:{surah:6,ayah:1,juz:7},120:{surah:6,ayah:9,juz:7},121:{surah:6,ayah:19,juz:7},122:{surah:6,ayah:28,juz:7},123:{surah:6,ayah:36,juz:7},124:{surah:6,ayah:45,juz:7},125:{surah:6,ayah:53,juz:7},126:{surah:6,ayah:61,juz:7},127:{surah:6,ayah:70,juz:7},128:{surah:6,ayah:79,juz:7},129:{surah:6,ayah:88,juz:7},130:{surah:6,ayah:96,juz:7},131:{surah:6,ayah:104,juz:7},132:{surah:6,ayah:111,juz:7},133:{surah:6,ayah:119,juz:7},134:{surah:6,ayah:128,juz:7},135:{surah:6,ayah:137,juz:7},136:{surah:6,ayah:144,juz:7},137:{surah:6,ayah:151,juz:7},138:{surah:6,ayah:159,juz:7},139:{surah:6,ayah:165,juz:7},140:{surah:7,ayah:1,juz:8},141:{surah:7,ayah:9,juz:8},142:{surah:7,ayah:18,juz:8},143:{surah:7,ayah:27,juz:8},144:{surah:7,ayah:36,juz:8},145:{surah:7,ayah:45,juz:8},146:{surah:7,ayah:54,juz:8},147:{surah:7,ayah:63,juz:8},148:{surah:7,ayah:72,juz:8},149:{surah:7,ayah:80,juz:8},150:{surah:7,ayah:89,juz:8},151:{surah:7,ayah:97,juz:8},152:{surah:7,ayah:106,juz:8},153:{surah:7,ayah:117,juz:8},154:{surah:7,ayah:128,juz:9},155:{surah:7,ayah:138,juz:9},156:{surah:7,ayah:147,juz:9},157:{surah:7,ayah:156,juz:9},158:{surah:7,ayah:164,juz:9},159:{surah:7,ayah:171,juz:9},160:{surah:7,ayah:180,juz:9},161:{surah:7,ayah:188,juz:9},162:{surah:7,ayah:196,juz:9},163:{surah:8,ayah:1,juz:9},164:{surah:8,ayah:9,juz:9},165:{surah:8,ayah:18,juz:9},166:{surah:8,ayah:26,juz:9},167:{surah:8,ayah:34,juz:9},168:{surah:8,ayah:42,juz:9},169:{surah:8,ayah:50,juz:9},170:{surah:8,ayah:58,juz:9},171:{surah:8,ayah:66,juz:9},172:{surah:8,ayah:72,juz:9},173:{surah:9,ayah:1,juz:10},174:{surah:9,ayah:7,juz:10},175:{surah:9,ayah:13,juz:10},176:{surah:9,ayah:19,juz:10},177:{surah:9,ayah:26,juz:10},178:{surah:9,ayah:33,juz:10},179:{surah:9,ayah:40,juz:10},180:{surah:9,ayah:47,juz:10},181:{surah:9,ayah:55,juz:10},182:{surah:9,ayah:63,juz:10},183:{surah:9,ayah:70,juz:10},184:{surah:9,ayah:77,juz:10},185:{surah:9,ayah:85,juz:10},186:{surah:9,ayah:93,juz:10},187:{surah:9,ayah:101,juz:10},188:{surah:9,ayah:109,juz:10},189:{surah:9,ayah:117,juz:10},190:{surah:9,ayah:123,juz:10},191:{surah:9,ayah:129,juz:10},192:{surah:10,ayah:1,juz:11},193:{surah:10,ayah:8,juz:11},194:{surah:10,ayah:16,juz:11},195:{surah:10,ayah:24,juz:11},196:{surah:10,ayah:32,juz:11},197:{surah:10,ayah:41,juz:11},198:{surah:10,ayah:49,juz:11},199:{surah:10,ayah:57,juz:11},200:{surah:10,ayah:65,juz:11},201:{surah:10,ayah:73,juz:11},202:{surah:10,ayah:81,juz:11},203:{surah:10,ayah:89,juz:11},204:{surah:10,ayah:97,juz:11},205:{surah:10,ayah:105,juz:11},206:{surah:11,ayah:1,juz:11},207:{surah:11,ayah:8,juz:11},208:{surah:11,ayah:15,juz:12},209:{surah:11,ayah:24,juz:12},210:{surah:11,ayah:33,juz:12},211:{surah:11,ayah:41,juz:12},212:{surah:11,ayah:50,juz:12},213:{surah:11,ayah:59,juz:12},214:{surah:11,ayah:67,juz:12},215:{surah:11,ayah:75,juz:12},216:{surah:11,ayah:83,juz:12},217:{surah:11,ayah:91,juz:12},218:{surah:11,ayah:99,juz:12},219:{surah:11,ayah:107,juz:12},220:{surah:11,ayah:115,juz:12},221:{surah:12,ayah:1,juz:12},222:{surah:12,ayah:8,juz:12},223:{surah:12,ayah:16,juz:12},224:{surah:12,ayah:24,juz:12},225:{surah:12,ayah:31,juz:12},226:{surah:12,ayah:38,juz:12},227:{surah:12,ayah:45,juz:12},228:{surah:12,ayah:53,juz:13},229:{surah:12,ayah:61,juz:13},230:{surah:12,ayah:69,juz:13},231:{surah:12,ayah:77,juz:13},232:{surah:12,ayah:85,juz:13},233:{surah:12,ayah:93,juz:13},234:{surah:12,ayah:101,juz:13},235:{surah:12,ayah:109,juz:13},236:{surah:13,ayah:1,juz:13},237:{surah:13,ayah:7,juz:13},238:{surah:13,ayah:14,juz:13},239:{surah:13,ayah:20,juz:13},240:{surah:13,ayah:28,juz:13},241:{surah:13,ayah:35,juz:13},242:{surah:14,ayah:1,juz:13},243:{surah:14,ayah:10,juz:13},244:{surah:14,ayah:17,juz:13},245:{surah:14,ayah:25,juz:13},246:{surah:14,ayah:33,juz:13},247:{surah:14,ayah:41,juz:13},248:{surah:15,ayah:1,juz:14},249:{surah:15,ayah:17,juz:14},250:{surah:15,ayah:35,juz:14},251:{surah:15,ayah:52,juz:14},252:{surah:15,ayah:70,juz:14},253:{surah:15,ayah:85,juz:14},254:{surah:16,ayah:1,juz:14},255:{surah:16,ayah:11,juz:14},256:{surah:16,ayah:22,juz:14},257:{surah:16,ayah:32,juz:14},258:{surah:16,ayah:42,juz:14},259:{surah:16,ayah:52,juz:14},260:{surah:16,ayah:62,juz:14},261:{surah:16,ayah:72,juz:14},262:{surah:16,ayah:81,juz:14},263:{surah:16,ayah:90,juz:14},264:{surah:16,ayah:100,juz:14},265:{surah:16,ayah:110,juz:14},266:{surah:16,ayah:119,juz:14},267:{surah:16,ayah:127,juz:14},268:{surah:17,ayah:1,juz:15},269:{surah:17,ayah:8,juz:15},270:{surah:17,ayah:18,juz:15},271:{surah:17,ayah:28,juz:15},272:{surah:17,ayah:38,juz:15},273:{surah:17,ayah:48,juz:15},274:{surah:17,ayah:58,juz:15},275:{surah:17,ayah:67,juz:15},276:{surah:17,ayah:76,juz:15},277:{surah:17,ayah:85,juz:15},278:{surah:17,ayah:95,juz:15},279:{surah:17,ayah:103,juz:15},280:{surah:17,ayah:109,juz:15},281:{surah:18,ayah:1,juz:15},282:{surah:18,ayah:9,juz:15},283:{surah:18,ayah:18,juz:15},284:{surah:18,ayah:26,juz:15},285:{surah:18,ayah:33,juz:15},286:{surah:18,ayah:42,juz:15},287:{surah:18,ayah:51,juz:15},288:{surah:18,ayah:60,juz:15},289:{surah:18,ayah:70,juz:15},290:{surah:18,ayah:80,juz:15},291:{surah:18,ayah:91,juz:15},292:{surah:18,ayah:100,juz:15},293:{surah:18,ayah:108,juz:15},294:{surah:19,ayah:1,juz:16},295:{surah:19,ayah:13,juz:16},296:{surah:19,ayah:27,juz:16},297:{surah:19,ayah:41,juz:16},298:{surah:19,ayah:56,juz:16},299:{surah:19,ayah:71,juz:16},300:{surah:19,ayah:86,juz:16},301:{surah:20,ayah:1,juz:16},302:{surah:20,ayah:16,juz:16},303:{surah:20,ayah:30,juz:16},304:{surah:20,ayah:45,juz:16},305:{surah:20,ayah:61,juz:16},306:{surah:20,ayah:76,juz:16},307:{surah:20,ayah:91,juz:16},308:{surah:20,ayah:106,juz:16},309:{surah:20,ayah:121,juz:16},310:{surah:20,ayah:130,juz:16},311:{surah:21,ayah:1,juz:17},312:{surah:21,ayah:11,juz:17},313:{surah:21,ayah:25,juz:17},314:{surah:21,ayah:39,juz:17},315:{surah:21,ayah:52,juz:17},316:{surah:21,ayah:66,juz:17},317:{surah:21,ayah:80,juz:17},318:{surah:21,ayah:92,juz:17},319:{surah:22,ayah:1,juz:17},320:{surah:22,ayah:10,juz:17},321:{surah:22,ayah:20,juz:17},322:{surah:22,ayah:30,juz:17},323:{surah:22,ayah:38,juz:17},324:{surah:22,ayah:48,juz:17},325:{surah:22,ayah:57,juz:17},326:{surah:22,ayah:66,juz:17},327:{surah:22,ayah:74,juz:17},328:{surah:23,ayah:1,juz:18},329:{surah:23,ayah:19,juz:18},330:{surah:23,ayah:36,juz:18},331:{surah:23,ayah:53,juz:18},332:{surah:23,ayah:71,juz:18},333:{surah:23,ayah:87,juz:18},334:{surah:23,ayah:101,juz:18},335:{surah:23,ayah:112,juz:18},336:{surah:24,ayah:1,juz:18},337:{surah:24,ayah:12,juz:18},338:{surah:24,ayah:22,juz:18},339:{surah:24,ayah:32,juz:18},340:{surah:24,ayah:41,juz:18},341:{surah:24,ayah:50,juz:18},342:{surah:24,ayah:59,juz:18},343:{surah:25,ayah:1,juz:18},344:{surah:25,ayah:11,juz:18},345:{surah:25,ayah:22,juz:18},346:{surah:25,ayah:34,juz:18},347:{surah:25,ayah:46,juz:18},348:{surah:25,ayah:57,juz:18},349:{surah:25,ayah:68,juz:19},350:{surah:26,ayah:1,juz:19},351:{surah:26,ayah:21,juz:19},352:{surah:26,ayah:41,juz:19},353:{surah:26,ayah:61,juz:19},354:{surah:26,ayah:84,juz:19},355:{surah:26,ayah:107,juz:19},356:{surah:26,ayah:131,juz:19},357:{surah:26,ayah:155,juz:19},358:{surah:26,ayah:177,juz:19},359:{surah:26,ayah:197,juz:19},360:{surah:26,ayah:217,juz:19},361:{surah:27,ayah:1,juz:19},362:{surah:27,ayah:14,juz:19},363:{surah:27,ayah:24,juz:19},364:{surah:27,ayah:37,juz:19},365:{surah:27,ayah:49,juz:19},366:{surah:27,ayah:60,juz:19},367:{surah:27,ayah:72,juz:19},368:{surah:27,ayah:82,juz:19},369:{surah:28,ayah:1,juz:20},370:{surah:28,ayah:12,juz:20},371:{surah:28,ayah:22,juz:20},372:{surah:28,ayah:33,juz:20},373:{surah:28,ayah:43,juz:20},374:{surah:28,ayah:53,juz:20},375:{surah:28,ayah:62,juz:20},376:{surah:28,ayah:71,juz:20},377:{surah:28,ayah:79,juz:20},378:{surah:28,ayah:88,juz:20},379:{surah:29,ayah:1,juz:20},380:{surah:29,ayah:11,juz:20},381:{surah:29,ayah:22,juz:20},382:{surah:29,ayah:33,juz:20},383:{surah:29,ayah:42,juz:20},384:{surah:29,ayah:51,juz:20},385:{surah:29,ayah:60,juz:20},386:{surah:30,ayah:1,juz:21},387:{surah:30,ayah:12,juz:21},388:{surah:30,ayah:24,juz:21},389:{surah:30,ayah:34,juz:21},390:{surah:30,ayah:44,juz:21},391:{surah:30,ayah:54,juz:21},392:{surah:31,ayah:1,juz:21},393:{surah:31,ayah:13,juz:21},394:{surah:31,ayah:22,juz:21},395:{surah:32,ayah:1,juz:21},396:{surah:32,ayah:14,juz:21},397:{surah:33,ayah:1,juz:21},398:{surah:33,ayah:9,juz:21},399:{surah:33,ayah:18,juz:21},400:{surah:33,ayah:26,juz:21},401:{surah:33,ayah:35,juz:21},402:{surah:33,ayah:44,juz:22},403:{surah:33,ayah:52,juz:22},404:{surah:33,ayah:60,juz:22},405:{surah:33,ayah:69,juz:22},406:{surah:34,ayah:1,juz:22},407:{surah:34,ayah:10,juz:22},408:{surah:34,ayah:19,juz:22},409:{surah:34,ayah:28,juz:22},410:{surah:34,ayah:38,juz:22},411:{surah:34,ayah:47,juz:22},412:{surah:35,ayah:1,juz:22},413:{surah:35,ayah:9,juz:22},414:{surah:35,ayah:19,juz:22},415:{surah:35,ayah:29,juz:22},416:{surah:35,ayah:38,juz:22},417:{surah:36,ayah:1,juz:22},418:{surah:36,ayah:14,juz:22},419:{surah:36,ayah:28,juz:22},420:{surah:36,ayah:41,juz:22},421:{surah:36,ayah:54,juz:22},422:{surah:36,ayah:67,juz:23},423:{surah:37,ayah:1,juz:23},424:{surah:37,ayah:23,juz:23},425:{surah:37,ayah:45,juz:23},426:{surah:37,ayah:67,juz:23},427:{surah:37,ayah:89,juz:23},428:{surah:37,ayah:113,juz:23},429:{surah:37,ayah:137,juz:23},430:{surah:37,ayah:160,juz:23},431:{surah:38,ayah:1,juz:23},432:{surah:38,ayah:17,juz:23},433:{surah:38,ayah:33,juz:23},434:{surah:38,ayah:49,juz:23},435:{surah:38,ayah:65,juz:23},436:{surah:39,ayah:1,juz:23},437:{surah:39,ayah:11,juz:23},438:{surah:39,ayah:22,juz:23},439:{surah:39,ayah:32,juz:23},440:{surah:39,ayah:42,juz:23},441:{surah:39,ayah:52,juz:23},442:{surah:39,ayah:63,juz:23},443:{surah:39,ayah:72,juz:24},444:{surah:40,ayah:1,juz:24},445:{surah:40,ayah:12,juz:24},446:{surah:40,ayah:22,juz:24},447:{surah:40,ayah:33,juz:24},448:{surah:40,ayah:43,juz:24},449:{surah:40,ayah:54,juz:24},450:{surah:40,ayah:65,juz:24},451:{surah:40,ayah:75,juz:24},452:{surah:41,ayah:1,juz:24},453:{surah:41,ayah:12,juz:24},454:{surah:41,ayah:22,juz:24},455:{surah:41,ayah:34,juz:24},456:{surah:41,ayah:44,juz:24},457:{surah:41,ayah:53,juz:24},458:{surah:42,ayah:1,juz:25},459:{surah:42,ayah:12,juz:25},460:{surah:42,ayah:22,juz:25},461:{surah:42,ayah:32,juz:25},462:{surah:42,ayah:43,juz:25},463:{surah:43,ayah:1,juz:25},464:{surah:43,ayah:14,juz:25},465:{surah:43,ayah:27,juz:25},466:{surah:43,ayah:41,juz:25},467:{surah:43,ayah:55,juz:25},468:{surah:43,ayah:70,juz:25},469:{surah:44,ayah:1,juz:25},470:{surah:44,ayah:25,juz:25},471:{surah:44,ayah:45,juz:25},472:{surah:45,ayah:1,juz:25},473:{surah:45,ayah:14,juz:25},474:{surah:45,ayah:25,juz:25},475:{surah:46,ayah:1,juz:26},476:{surah:46,ayah:11,juz:26},477:{surah:46,ayah:22,juz:26},478:{surah:46,ayah:32,juz:26},479:{surah:47,ayah:1,juz:26},480:{surah:47,ayah:12,juz:26},481:{surah:47,ayah:22,juz:26},482:{surah:47,ayah:32,juz:26},483:{surah:48,ayah:1,juz:26},484:{surah:48,ayah:12,juz:26},485:{surah:48,ayah:22,juz:26},486:{surah:49,ayah:1,juz:26},487:{surah:49,ayah:12,juz:26},488:{surah:50,ayah:1,juz:26},489:{surah:50,ayah:17,juz:26},490:{surah:50,ayah:35,juz:26},491:{surah:51,ayah:1,juz:26},492:{surah:51,ayah:22,juz:26},493:{surah:51,ayah:42,juz:27},494:{surah:52,ayah:1,juz:27},495:{surah:52,ayah:22,juz:27},496:{surah:52,ayah:41,juz:27},497:{surah:53,ayah:1,juz:27},498:{surah:53,ayah:28,juz:27},499:{surah:54,ayah:1,juz:27},500:{surah:54,ayah:24,juz:27},501:{surah:54,ayah:44,juz:27},502:{surah:55,ayah:1,juz:27},503:{surah:55,ayah:29,juz:27},504:{surah:55,ayah:57,juz:27},505:{surah:56,ayah:1,juz:27},506:{surah:56,ayah:27,juz:27},507:{surah:56,ayah:57,juz:27},508:{surah:56,ayah:80,juz:27},509:{surah:57,ayah:1,juz:27},510:{surah:57,ayah:14,juz:27},511:{surah:57,ayah:24,juz:27},512:{surah:58,ayah:1,juz:28},513:{surah:58,ayah:11,juz:28},514:{surah:59,ayah:1,juz:28},515:{surah:59,ayah:11,juz:28},516:{surah:59,ayah:21,juz:28},517:{surah:60,ayah:1,juz:28},518:{surah:60,ayah:9,juz:28},519:{surah:61,ayah:1,juz:28},520:{surah:62,ayah:1,juz:28},521:{surah:62,ayah:8,juz:28},522:{surah:63,ayah:1,juz:28},523:{surah:64,ayah:1,juz:28},524:{surah:64,ayah:12,juz:28},525:{surah:65,ayah:1,juz:28},526:{surah:65,ayah:9,juz:28},527:{surah:66,ayah:1,juz:28},528:{surah:66,ayah:9,juz:28},529:{surah:67,ayah:1,juz:29},530:{surah:67,ayah:14,juz:29},531:{surah:67,ayah:25,juz:29},532:{surah:68,ayah:1,juz:29},533:{surah:68,ayah:24,juz:29},534:{surah:68,ayah:44,juz:29},535:{surah:69,ayah:1,juz:29},536:{surah:69,ayah:23,juz:29},537:{surah:69,ayah:42,juz:29},538:{surah:70,ayah:1,juz:29},539:{surah:70,ayah:29,juz:29},540:{surah:71,ayah:1,juz:29},541:{surah:71,ayah:20,juz:29},542:{surah:72,ayah:1,juz:29},543:{surah:72,ayah:20,juz:29},544:{surah:73,ayah:1,juz:29},545:{surah:73,ayah:16,juz:29},546:{surah:74,ayah:1,juz:29},547:{surah:74,ayah:26,juz:29},548:{surah:74,ayah:50,juz:29},549:{surah:75,ayah:1,juz:29},550:{surah:75,ayah:28,juz:29},551:{surah:76,ayah:1,juz:29},552:{surah:76,ayah:22,juz:29},553:{surah:77,ayah:1,juz:29},554:{surah:77,ayah:29,juz:29},555:{surah:78,ayah:1,juz:30},556:{surah:78,ayah:23,juz:30},557:{surah:79,ayah:1,juz:30},558:{surah:79,ayah:27,juz:30},559:{surah:80,ayah:1,juz:30},560:{surah:80,ayah:25,juz:30},561:{surah:81,ayah:1,juz:30},562:{surah:82,ayah:1,juz:30},563:{surah:83,ayah:1,juz:30},564:{surah:83,ayah:19,juz:30},565:{surah:84,ayah:1,juz:30},566:{surah:85,ayah:1,juz:30},567:{surah:86,ayah:1,juz:30},568:{surah:87,ayah:1,juz:30},569:{surah:88,ayah:1,juz:30},570:{surah:89,ayah:1,juz:30},571:{surah:89,ayah:22,juz:30},572:{surah:90,ayah:1,juz:30},573:{surah:91,ayah:1,juz:30},574:{surah:92,ayah:1,juz:30},575:{surah:93,ayah:1,juz:30},576:{surah:94,ayah:1,juz:30},577:{surah:95,ayah:1,juz:30},578:{surah:96,ayah:1,juz:30},579:{surah:97,ayah:1,juz:30},580:{surah:98,ayah:1,juz:30},581:{surah:99,ayah:1,juz:30},582:{surah:100,ayah:1,juz:30},583:{surah:101,ayah:1,juz:30},584:{surah:102,ayah:1,juz:30},585:{surah:103,ayah:1,juz:30},586:{surah:104,ayah:1,juz:30},587:{surah:105,ayah:1,juz:30},588:{surah:106,ayah:1,juz:30},589:{surah:107,ayah:1,juz:30},590:{surah:108,ayah:1,juz:30},591:{surah:109,ayah:1,juz:30},592:{surah:110,ayah:1,juz:30},593:{surah:111,ayah:1,juz:30},594:{surah:112,ayah:1,juz:30},595:{surah:113,ayah:1,juz:30},596:{surah:114,ayah:1,juz:30},597:{surah:114,ayah:3,juz:30},598:{surah:114,ayah:5,juz:30},599:{surah:114,ayah:6,juz:30},600:{surah:114,ayah:6,juz:30},601:{surah:114,ayah:6,juz:30},602:{surah:114,ayah:6,juz:30},603:{surah:114,ayah:6,juz:30},604:{surah:114,ayah:6,juz:30}};
+
+const JUZ_PAGES={1:1,2:22,3:42,4:62,5:82,6:102,7:121,8:142,9:162,10:182,11:201,12:221,13:242,14:261,15:281,16:302,17:322,18:342,19:362,20:382,21:403,22:422,23:442,24:462,25:482,26:502,27:522,28:542,29:562,30:582};
+
+const SURAH_PAGES={1:1,2:2,3:50,4:77,5:106,6:128,7:151,8:177,9:187,10:208,11:221,12:235,13:249,14:255,15:262,16:267,17:282,18:293,19:305,20:312,21:322,22:332,23:342,24:350,25:359,26:367,27:377,28:385,29:396,30:404,31:411,32:415,33:418,34:428,35:434,36:440,37:446,38:453,39:458,40:467,41:477,42:483,43:489,44:496,45:499,46:503,47:507,48:511,49:515,50:518,51:520,52:523,53:526,54:528,55:531,56:534,57:537,58:542,59:545,60:549,61:551,62:553,63:554,64:556,65:558,66:560,67:562,68:564,69:566,70:568,71:570,72:572,73:573,74:575,75:577,76:578,77:580,78:582,79:583,80:585,81:586,82:587,83:587,84:588,85:589,86:590,87:590,88:591,89:592,90:594,91:595,92:595,93:596,94:596,95:597,96:597,97:599,98:599,99:600,100:600,101:600,102:601,103:602,104:602,105:603,106:603,107:603,108:604,109:604,110:604,111:604,112:604,113:604,114:604};
+
+const SURAH_NAMES=["","الفاتحة","البقرة","آل عمران","النساء","المائدة","الأنعام","الأعراف","الأنفال","التوبة","يونس","هود","يوسف","الرعد","إبراهيم","الحجر","النحل","الإسراء","الكهف","مريم","طه","الأنبياء","الحج","المؤمنون","النور","الفرقان","الشعراء","النمل","القصص","العنكبوت","الروم","لقمان","السجدة","الأحزاب","سبأ","فاطر","يس","الصافات","ص","الزمر","غافر","فصلت","الشورى","الزخرف","الدخان","الجاثية","الأحقاف","محمد","الفتح","الحجرات","ق","الذاريات","الطور","النجم","القمر","الرحمن","الواقعة","الحديد","المجادلة","الحشر","الممتحنة","الصف","الجمعة","المنافقون","التغابن","الطلاق","التحريم","الملك","القلم","الحاقة","المعارج","نوح","الجن","المزمل","المدثر","القيامة","الإنسان","المرسلات","النبأ","النازعات","عبس","التكوير","الانفطار","المطففين","الانشقاق","البروج","الطارق","الأعلى","الغاشية","الفجر","البلد","الشمس","الليل","الضحى","الشرح","التين","العلق","القدر","البينة","الزلزلة","العاديات","القارعة","التكاثر","العصر","الهمزة","الفيل","قريش","الماعون","الكوثر","الكافرون","النصر","المسد","الإخلاص","الفلق","الناس"];
+
+// Image sources (primary + fallbacks)
+const IMG_SOURCES = [
+  p => `https://static.quran.com/images/pages/page${String(p).padStart(3,'0')}.png`,
+  p => `https://www.searchtruth.com/quran/images/holy-quran/page-${String(p).padStart(3,'0')}.png`,
+  p => `https://quran.islamway.net/quran/pages/hafs/${String(p).padStart(3,'0')}.png`,
+];
+
+// ══════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════
+let currentPage = parseInt(localStorage.getItem('mushafPage') || '1');
+let isNight     = localStorage.getItem('mushafNight') === '1';
+let activeKhatmaId = localStorage.getItem('activeKhatma') || null;
+let observer    = null;
+let dlAbort     = false;
+let dlRunning   = false;
+
+const DB_NAME   = 'MushafDB';
+const DB_VER    = 1;
+const STORE     = 'pages';
+let db          = null;
+
+// ══════════════════════════════════════════════
+//  INDEXEDDB
+// ══════════════════════════════════════════════
+function openDB() {
+  return new Promise((res, rej) => {
+    const req = indexedDB.open(DB_NAME, DB_VER);
+    req.onupgradeneeded = e => {
+      e.target.result.createObjectStore(STORE);
+    };
+    req.onsuccess = e => { db = e.target.result; res(db); };
+    req.onerror   = () => rej(req.error);
+  });
+}
+
+function dbGet(key) {
+  return new Promise((res, rej) => {
+    const tx = db.transaction(STORE, 'readonly');
+    const req = tx.objectStore(STORE).get(key);
+    req.onsuccess = () => res(req.result);
+    req.onerror   = () => rej(req.error);
+  });
+}
+
+function dbPut(key, val) {
+  return new Promise((res, rej) => {
+    const tx = db.transaction(STORE, 'readwrite');
+    const req = tx.objectStore(STORE).put(val, key);
+    req.onsuccess = () => res();
+    req.onerror   = () => rej(req.error);
+  });
+}
+
+function dbGetAllKeys() {
+  return new Promise((res, rej) => {
+    const tx = db.transaction(STORE, 'readonly');
+    const req = tx.objectStore(STORE).getAllKeys();
+    req.onsuccess = () => res(req.result);
+    req.onerror   = () => rej(req.error);
+  });
+}
+
+// ══════════════════════════════════════════════
+//  PAGE RENDERING
+// ══════════════════════════════════════════════
+const container = document.getElementById('pagesContainer');
+const pageElements = {}; // page# → card element
+
+function getPageUrl(p) {
+  return IMG_SOURCES[0](p);
+}
+
+async function getCachedUrl(p) {
+  if (!db) return null;
+  try {
+    const blob = await dbGet(p);
+    if (blob) return URL.createObjectURL(blob);
+  } catch(e) {}
+  return null;
+}
+
+function buildPageCard(p) {
+  const isRead = isPageRead(p);
+  const div = document.createElement('div');
+  div.className = 'page-card' + (isRead ? ' read' : '') + (p === currentPage ? ' active-page' : '');
+  div.id = `page-${p}`;
+  div.dataset.page = p;
+
+  div.innerHTML = `
+    <div class="read-overlay"></div>
+    <div class="read-checkmark">✓</div>
+    <div class="page-placeholder" id="ph-${p}">
+      <div class="page-spinner"></div>
+      <span>صفحة ${p}</span>
+    </div>
+    <img class="page-img${isNight?' night':''}" id="img-${p}" style="display:none" alt="صفحة ${p}">
+    <div class="page-badge">${p}</div>
+    <button class="btn-mark" onclick="togglePageRead(${p})">
+      ${isRead ? '✓ مقروءة' : 'علّم مقروءة'}
+    </button>
+  `;
+  return div;
+}
+
+function loadPageImage(p) {
+  const img = document.getElementById(`img-${p}`);
+  const ph  = document.getElementById(`ph-${p}`);
+  if (!img || img.dataset.loaded) return;
+  img.dataset.loaded = '1';
+
+  const doLoad = (url, srcIdx) => {
+    img.onload = () => {
+      if (ph) ph.style.display = 'none';
+      img.style.display = 'block';
+    };
+    img.onerror = () => {
+      if (srcIdx + 1 < IMG_SOURCES.length) {
+        img.src = IMG_SOURCES[srcIdx + 1](p);
+        doLoad(img.src, srcIdx + 1);
+      } else {
+        if (ph) ph.innerHTML = `<span style="color:#8a4a4a">تعذّر تحميل الصفحة</span>`;
+      }
+    };
+    img.src = url;
+  };
+
+  // Try cache first
+  getCachedUrl(p).then(url => {
+    doLoad(url || getPageUrl(p), url ? -1 : 0);
+  });
+}
+
+function buildAllPages() {
+  container.innerHTML = '';
+  for (let p = 1; p <= 604; p++) {
+    const card = buildPageCard(p);
+    container.appendChild(card);
+    pageElements[p] = card;
+  }
+  setupObserver();
+}
+
+function setupObserver() {
+  if (observer) observer.disconnect();
+  observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      const p = parseInt(entry.target.dataset.page);
+      if (entry.isIntersecting) {
+        loadPageImage(p);
+        // Preload neighbors
+        if (p > 1) loadPageImage(p - 1);
+        if (p < 604) loadPageImage(p + 1);
+        if (p > 2) loadPageImage(p - 2);
+        if (p < 603) loadPageImage(p + 2);
+        // Update current page tracking
+        updateCurrentPage(p);
+      }
+    });
+  }, { root: document.getElementById('reader'), rootMargin: '200px', threshold: 0.3 });
+
+  Object.values(pageElements).forEach(el => observer.observe(el));
+}
+
+let _pageUpdateTimer = null;
+function updateCurrentPage(p) {
+  clearTimeout(_pageUpdateTimer);
+  _pageUpdateTimer = setTimeout(() => {
+    if (p === currentPage) return;
+    currentPage = p;
+    localStorage.setItem('mushafPage', p);
+
+    // Update header chips
+    const info = PAGE_MAP[p];
+    if (info) {
+      document.getElementById('chipSurah').textContent = SURAH_NAMES[info.surah] || '—';
+      document.getElementById('chipJuz').textContent   = 'الجزء ' + info.juz;
+    }
+
+    // Active highlight
+    Object.values(pageElements).forEach(el => el.classList.remove('active-page'));
+    if (pageElements[p]) pageElements[p].classList.add('active-page');
+
+    // Update footer buttons
+    document.getElementById('btnPrev').disabled = p <= 1;
+    document.getElementById('btnNext').disabled = p >= 604;
+  }, 100);
+}
+
+// ══════════════════════════════════════════════
+//  NAVIGATION
+// ══════════════════════════════════════════════
+function goToPage(p, smooth = true) {
+  p = Math.max(1, Math.min(604, parseInt(p) || 1));
+  const card = pageElements[p];
+  if (!card) return;
+  card.scrollIntoView({ behavior: smooth ? 'smooth' : 'instant', block: 'start' });
+  currentPage = p;
+  localStorage.setItem('mushafPage', p);
+  updateCurrentPage(p);
+}
+
+function prevPage() { goToPage(currentPage - 1); }
+function nextPage() { goToPage(currentPage + 1); }
+
+function jumpToPage() {
+  const v = parseInt(document.getElementById('pageJumpInput').value);
+  if (v >= 1 && v <= 604) goToPage(v);
+}
+function jumpFromDrawer() {
+  const v = parseInt(document.getElementById('drawerPageInput').value);
+  if (v >= 1 && v <= 604) { goToPage(v); closeDrawer(); }
+}
+
+document.getElementById('pageJumpInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') jumpToPage();
+});
+
+// Keyboard navigation
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  if (e.key === 'ArrowLeft'  || e.key === 'ArrowDown')  nextPage();
+  if (e.key === 'ArrowRight' || e.key === 'ArrowUp')    prevPage();
+});
+
+// ══════════════════════════════════════════════
+//  DRAWER
+// ══════════════════════════════════════════════
+function buildDrawer() {
+  // Surah list
+  const tabSurah = document.getElementById('tabSurah');
+  let html = '';
+  for (let i = 1; i <= 114; i++) {
+    const page = SURAH_PAGES[i] || 1;
+    html += `<div class="nav-item" onclick="goToPage(${page});closeDrawer()">
+      <div class="nav-item-num">${i}</div>
+      <div class="nav-item-name">${SURAH_NAMES[i]}</div>
+      <div class="nav-item-page">ص ${page}</div>
+    </div>`;
+  }
+  tabSurah.innerHTML = html;
+
+  // Juz grid
+  const tabJuz = document.getElementById('tabJuz');
+  let juzHtml = '<div class="juz-grid">';
+  for (let j = 1; j <= 30; j++) {
+    const page = JUZ_PAGES[j];
+    const surahId = PAGE_MAP[page]?.surah || 1;
+    juzHtml += `<div class="juz-btn" onclick="goToPage(${page});closeDrawer()">
+      <div class="juz-num">${j}</div>
+      <div class="juz-info">ص ${page}</div>
+    </div>`;
+  }
+  juzHtml += '</div>';
+  tabJuz.innerHTML = juzHtml;
+}
+
+function openDrawer(tab) {
+  if (tab) switchTab(tab);
+  document.getElementById('drawer').classList.add('open');
+  document.getElementById('drawerOverlay').classList.add('open');
+}
+function closeDrawer() {
+  document.getElementById('drawer').classList.remove('open');
+  document.getElementById('drawerOverlay').classList.remove('open');
+}
+function switchTab(name) {
+  document.querySelectorAll('.drawer-tab').forEach((t,i) => {
+    const names = ['surah','juz','page'];
+    t.classList.toggle('active', names[i] === name);
+  });
+  document.querySelectorAll('.tab-panel').forEach((p,i) => {
+    const names = ['tabSurah','tabJuz','tabPage'];
+    p.classList.toggle('active', p.id === 'tab' + name.charAt(0).toUpperCase() + name.slice(1));
+  });
+}
+
+// ══════════════════════════════════════════════
+//  NIGHT MODE
+// ══════════════════════════════════════════════
+function toggleNight() {
+  isNight = !isNight;
+  localStorage.setItem('mushafNight', isNight ? '1' : '0');
+  document.body.classList.toggle('night', isNight);
+  document.getElementById('nightBtn').textContent = isNight ? '☀️' : '🌙';
+  document.querySelectorAll('.page-img').forEach(img => img.classList.toggle('night', isNight));
+}
+
+// ══════════════════════════════════════════════
+//  KHATMA SYSTEM
+// ══════════════════════════════════════════════
+const MILESTONES = [
+  { pct:25,  label:'ربع',   icon:'🥉' },
+  { pct:50,  label:'نصف',   icon:'🥈' },
+  { pct:75,  label:'ثلاثة أرباع', icon:'🥇' },
+  { pct:90,  label:'٩٠٪',  icon:'🏅' },
+  { pct:100, label:'الختمة كاملة', icon:'🏆' },
+];
+
+function getKhatmas() {
+  try { return JSON.parse(localStorage.getItem('khatmas') || '[]'); } catch { return []; }
+}
+function saveKhatmas(arr) {
+  localStorage.setItem('khatmas', JSON.stringify(arr));
+}
+function getActiveKhatma() {
+  const list = getKhatmas();
+  return list.find(k => k.id === activeKhatmaId) || list[0] || null;
+}
+
+function isPageRead(p) {
+  const k = getActiveKhatma();
+  return k ? (k.read || []).includes(p) : false;
+}
+function togglePageRead(p) {
+  const list = getKhatmas();
+  const idx  = list.findIndex(k => k.id === activeKhatmaId);
+  if (idx < 0) { showToast('أنشئ ختمة أولاً'); return; }
+  const k = list[idx];
+  if (!k.read) k.read = [];
+  const ri = k.read.indexOf(p);
+  if (ri >= 0) k.read.splice(ri, 1);
+  else          k.read.push(p);
+  saveKhatmas(list);
+
+  // Update card UI
+  const card = pageElements[p];
+  if (card) {
+    const isRead = k.read.includes(p);
+    card.classList.toggle('read', isRead);
+    const btn = card.querySelector('.btn-mark');
+    if (btn) btn.textContent = isRead ? '✓ مقروءة' : 'علّم مقروءة';
+  }
+
+  renderKhatmaProgress();
+  checkMilestones(k);
+}
+
+function renderKhatmaSelect() {
+  const sel = document.getElementById('khatmaSelect');
+  const list = getKhatmas();
+  if (list.length === 0) {
+    sel.innerHTML = '<option value="">لا توجد ختمات</option>';
+    return;
+  }
+  sel.innerHTML = list.map(k =>
+    `<option value="${k.id}" ${k.id===activeKhatmaId?'selected':''}>${k.name}</option>`
+  ).join('');
+  if (!activeKhatmaId && list.length) {
+    activeKhatmaId = list[0].id;
+    localStorage.setItem('activeKhatma', activeKhatmaId);
+  }
+}
+
+function renderKhatmaProgress() {
+  const k = getActiveKhatma();
+  const readCount = k ? (k.read || []).length : 0;
+  const pct = Math.round((readCount / 604) * 100);
+  document.getElementById('khatmaProgressFill').style.width = pct + '%';
+  document.getElementById('khatmaProgressText').textContent = `${readCount} / ٦٠٤ صفحة`;
+  document.getElementById('khatmaProgressPct').textContent  = pct + '٪';
+
+  const ms = document.getElementById('khatmaMilestones');
+  ms.innerHTML = MILESTONES.map(m => {
+    const done = pct >= m.pct;
+    return `<div class="milestone ${done?'achieved':''}">
+      <div class="milestone-icon">${m.icon}</div>
+      <div>${m.label}</div>
+    </div>`;
+  }).join('');
+}
+
+function switchKhatma() {
+  activeKhatmaId = document.getElementById('khatmaSelect').value;
+  localStorage.setItem('activeKhatma', activeKhatmaId);
+  // Refresh page read states
+  for (let p = 1; p <= 604; p++) {
+    const card = pageElements[p];
+    if (!card) continue;
+    const isRead = isPageRead(p);
+    card.classList.toggle('read', isRead);
+    const btn = card.querySelector('.btn-mark');
+    if (btn) btn.textContent = isRead ? '✓ مقروءة' : 'علّم مقروءة';
+  }
+  renderKhatmaProgress();
+}
+
+function addKhatma() {
+  const name = prompt('اسم الختمة الجديدة:');
+  if (!name) return;
+  const list = getKhatmas();
+  const id   = 'k' + Date.now();
+  list.push({ id, name, read: [], createdAt: Date.now() });
+  saveKhatmas(list);
+  activeKhatmaId = id;
+  localStorage.setItem('activeKhatma', id);
+  renderKhatmaSelect();
+  renderKhatmaProgress();
+  showToast('تمت إضافة الختمة ✓');
+}
+
+function deleteKhatma() {
+  const k = getActiveKhatma();
+  if (!k) return;
+  if (!confirm(`هل تريد حذف ختمة "${k.name}"؟`)) return;
+  let list = getKhatmas();
+  list = list.filter(x => x.id !== k.id);
+  saveKhatmas(list);
+  activeKhatmaId = list[0]?.id || null;
+  localStorage.setItem('activeKhatma', activeKhatmaId || '');
+  renderKhatmaSelect();
+  renderKhatmaProgress();
+  showToast('تم حذف الختمة');
+}
+
+function checkMilestones(k) {
+  const readCount = (k.read || []).length;
+  const pct = Math.round((readCount / 604) * 100);
+  if (pct >= 100) { showCelebration('أتممت ختمة القرآن الكريم كاملاً'); }
+  else if (pct >= 75 && readCount - 1 < 604 * 0.75) { showCelebration('أتممت ثلاثة أرباع القرآن 🥇'); }
+  else if (pct >= 50 && readCount - 1 < 604 * 0.50) { showCelebration('أتممت نصف القرآن 🥈'); }
+  else if (pct >= 25 && readCount - 1 < 604 * 0.25) { showCelebration('أتممت ربع القرآن 🥉'); }
+}
+
+function toggleKhatma() {
+  const p = document.getElementById('khatmaPanel');
+  const isOpen = p.classList.toggle('open');
+  if (isOpen) { renderKhatmaSelect(); renderKhatmaProgress(); }
+  document.getElementById('downloadPanel').classList.remove('open');
+}
+
+// ══════════════════════════════════════════════
+//  DOWNLOAD
+// ══════════════════════════════════════════════
+function toggleDownload() {
+  document.getElementById('downloadPanel').classList.toggle('open');
+  document.getElementById('khatmaPanel').classList.remove('open');
+  updateDownloadStatus();
+}
+
+async function updateDownloadStatus() {
+  if (!db) return;
+  const keys = await dbGetAllKeys();
+  const count = keys.filter(k => typeof k === 'number').length;
+  const pct = Math.round((count / 604) * 100);
+  document.getElementById('dlFill').style.width = pct + '%';
+  document.getElementById('dlStatus').textContent =
+    count === 604
+      ? '✅ اكتمل التحميل — التطبيق يعمل بدون إنترنت'
+      : count > 0
+        ? `تم تحميل ${count}/604 صفحة (${pct}%)`
+        : 'جاهز للتحميل';
+  document.getElementById('dlStartBtn').textContent =
+    count === 604 ? '✅ مكتمل' :
+    count > 0     ? `▶ استكمال التحميل (${count}/604)` :
+                    '🚀 بدء التحميل';
+  document.getElementById('dlStartBtn').disabled = count === 604;
+}
+
+async function startDownload() {
+  if (dlRunning) return;
+  dlRunning = true;
+  dlAbort   = false;
+  document.getElementById('dlStartBtn').disabled = true;
+  document.getElementById('dlStartBtn').textContent = '⏳ جاري التحميل...';
+
+  const keys = await dbGetAllKeys();
+  const cached = new Set(keys.filter(k => typeof k === 'number'));
+
+  let done = cached.size;
+  const BATCH = 5;
+
+  for (let p = 1; p <= 604; p += BATCH) {
+    if (dlAbort) break;
+    const batch = [];
+    for (let i = p; i < p + BATCH && i <= 604; i++) {
+      if (!cached.has(i)) batch.push(i);
+      else done;
+    }
+    await Promise.all(batch.map(async pg => {
+      for (let si = 0; si < IMG_SOURCES.length; si++) {
+        try {
+          const url  = IMG_SOURCES[si](pg);
+          const resp = await fetch(url);
+          if (!resp.ok) throw new Error('HTTP ' + resp.status);
+          const blob = await resp.blob();
+          await dbPut(pg, blob);
+          done++;
+          const pct = Math.round((done / 604) * 100);
+          document.getElementById('dlFill').style.width = pct + '%';
+          document.getElementById('dlStatus').textContent = `تحميل صفحة ${pg}... (${done}/604)`;
+          break;
+        } catch(e) {
+          if (si === IMG_SOURCES.length - 1) {
+            done++;
+          }
+        }
+      }
+    }));
+  }
+
+  dlRunning = false;
+  updateDownloadStatus();
+  if (!dlAbort && done >= 604) {
+    showToast('✅ اكتمل التحميل — يعمل الآن بدون إنترنت');
+  }
+}
+
+// ══════════════════════════════════════════════
+//  CELEBRATION & TOAST
+// ══════════════════════════════════════════════
+function showCelebration(text) {
+  document.getElementById('celebText').innerHTML =
+    text + '<br><small style="color:var(--gold-dim)">﴿ وَلَقَدْ يَسَّرْنَا الْقُرْآنَ لِلذِّكْرِ ﴾</small>';
+  document.getElementById('celebrationOverlay').classList.add('show');
+  launchStars();
+}
+function closeCelebration() {
+  document.getElementById('celebrationOverlay').classList.remove('show');
+}
+function launchStars() {
+  const emojis = ['⭐','🌟','✨','💫','🌙','☀️'];
+  for (let i = 0; i < 40; i++) {
+    setTimeout(() => {
+      const s = document.createElement('div');
+      s.className = 'falling-star';
+      s.textContent = emojis[Math.floor(Math.random()*emojis.length)];
+      s.style.left   = Math.random()*100 + 'vw';
+      s.style.fontSize = (1 + Math.random()*1.5) + 'rem';
+      const dur = 2 + Math.random()*3;
+      s.style.animation = `fallStar ${dur}s linear forwards`;
+      document.body.appendChild(s);
+      setTimeout(() => s.remove(), dur*1000);
+    }, i*120);
+  }
+}
+
+let _toastTimer = null;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ══════════════════════════════════════════════
+//  OFFLINE DETECTION
+// ══════════════════════════════════════════════
+function checkOffline() {
+  document.body.classList.toggle('offline', !navigator.onLine);
+}
+window.addEventListener('online',  checkOffline);
+window.addEventListener('offline', checkOffline);
+checkOffline();
+
+// ══════════════════════════════════════════════
+//  SERVICE WORKER (optional, HTTPS only)
+// ══════════════════════════════════════════════
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
+}
+
+// ══════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════
+async function init() {
+  // Night mode
+  if (isNight) {
+    document.body.classList.add('night');
+    document.getElementById('nightBtn').textContent = '☀️';
+  }
+
+  // Footer buttons
+  document.getElementById('btnPrev').disabled = currentPage <= 1;
+  document.getElementById('btnNext').disabled = currentPage >= 604;
+
+  // Build drawer nav
+  buildDrawer();
+
+  // Khatma init — create default if none
+  if (getKhatmas().length === 0) {
+    const id = 'k' + Date.now();
+    saveKhatmas([{ id, name: 'ختمتي الأولى', read: [], createdAt: Date.now() }]);
+    activeKhatmaId = id;
+    localStorage.setItem('activeKhatma', id);
+  }
+  renderKhatmaSelect();
+  renderKhatmaProgress();
+
+  // Open IndexedDB
+  try { await openDB(); } catch(e) { console.warn('IndexedDB unavailable'); }
+
+  // Build page cards
+  buildAllPages();
+
+  // Jump to last saved page (instant, no animation)
+  setTimeout(() => {
+    goToPage(currentPage, false);
+  }, 50);
+
+  // Initial chip update
+  const info = PAGE_MAP[currentPage];
+  if (info) {
+    document.getElementById('chipSurah').textContent = SURAH_NAMES[info.surah] || '—';
+    document.getElementById('chipJuz').textContent   = 'الجزء ' + info.juz;
+  }
+}
+
+init();
+</script>
+</body>
+</html>
